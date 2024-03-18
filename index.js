@@ -22,7 +22,7 @@ const socketIo = require('socket.io');  //to display realtime online/offline sta
 
 const io = socketIo(server, {
   cors: {
-    origin: 'http://localhost:3000',
+    origin: 'https://tinder-a-dating-app-for-college-students.onrender.com',
     methods: ['GET', 'POST'],
   },
 });
