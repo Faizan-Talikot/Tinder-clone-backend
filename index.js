@@ -454,6 +454,7 @@ io.on('connection',socket=>{
   }
       console.log("after usestatuschanged called")
     }
+    io.emit('userDisconnected',{userId,online:false})
   });
 })
 
