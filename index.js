@@ -22,10 +22,12 @@ const socketIo = require('socket.io');  //to display realtime online/offline sta
 
 const io = socketIo(server, {
   cors: {
-    origin: 'http://localhost:3000',
-    methods: ['GET', 'POST'],
-  },
+    origin: ['http://localhost:3000', 'http://192.168.0.108:8000','http://192.168.0.108:3000'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }
 });
+
 const onlineUsers={}  //to store all my online user
 
 //trial api
