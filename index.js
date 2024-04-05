@@ -131,7 +131,7 @@ app.get("/user", async (req, res) => {
   }
 });
 
-//getting all users from our database
+//getting all gendered users from our database
 app.get("/gendered-users", async (req, res) => {
   const gender = req.query.gender;
 
@@ -147,6 +147,190 @@ app.get("/gendered-users", async (req, res) => {
     console.log(err)
   }
 });
+
+
+//getting all users from our database
+app.get("/allusers", async (req, res) => {
+
+  try {
+    await client.connect(); //connecting to database
+    const database = client.db("app-data");
+    const users = database.collection("users");
+    const foundusers = await users.find({}).toArray();
+    res.send(foundusers);
+  }catch(err){
+    console.log(err)
+  }
+});
+
+
+//delete a user
+app.delete("/deluser", async (req, res) => {
+  const userId = req.query.userId;
+
+  try {
+    await client.connect(); //connecting to database
+    const database = client.db("app-data");
+    const users = database.collection("users");
+    const deletedUser = await users.deleteOne({ user_id: userId });
+    res.json({ message: "User deleted successfully", deletedUser });
+  }catch(err){
+    console.log(err)
+  }
+});
+
+
+
+//add a event
+app.post("/addevent", async (req, res) => {
+  const { eventName, college, eventDate , eventDetails } = req.body;
+
+  try {
+    await client.connect(); // Connect to the database
+    const database = client.db("app-data");
+    const events = database.collection("events");
+    const eventId = uuidv4();
+    const participants = []
+
+    // Insert the new event into the database
+    const newEvent = {
+      _id: eventId, // Use the generated token as the event ID
+      eventName,
+      eventDetails,
+      college,
+      eventDate,
+      participants
+    };
+    await events.insertOne(newEvent);
+    res.status(201).send({ eventId, message: "Event added successfully" });
+  } catch (err) {
+    console.error('Error adding event:', err);
+    res.status(500).send({ message: "Failed to add event" });
+  }
+});
+
+
+//get all events
+app.get("/allevents", async (req, res) => {
+  try {
+    await client.connect();  // Connect to the database
+    const database = client.db("app-data");
+    const eventsCollection = database.collection("events");
+
+    // Fetch all events
+    const events = await eventsCollection.find().toArray();
+
+    // Fetch user information for all participants
+    const userIds = events.flatMap(event => event.participants);
+    const usersCollection = database.collection("users");
+    const users = await usersCollection.find({ user_id: { $in: userIds } }).toArray();
+
+    // Map user information to participants in each event
+    events.forEach(event => {
+      event.participants = event.participants.map(userId => {
+        const user = users.find(user => user.user_id === userId);
+        if (user) {
+          return {
+            userId: userId,
+            name: user.first_name,
+            imageUrl: user.url // Assuming the URL field in the user object stores the image URL
+          };
+        } else {
+          return { name: userId }; // Use user ID if user not found
+        }
+      });
+    });
+
+    res.send(events);
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    res.status(500).send("Failed to fetch events");
+  }
+});
+
+
+
+
+
+//delete a event
+app.delete("/delevent", async (req, res) => {
+  const eventId = req.query.eventId; // Assuming the eventId is passed as a query parameter
+
+  try {
+    // Connect to the database
+    await client.connect();
+    const database = client.db("app-data");
+    const events = database.collection("events");
+
+    // Delete the event with the provided eventId
+    const deletedEvent = await events.deleteOne({ _id: eventId });
+
+    // Send a response indicating the success of the operation
+    res.json({ message: "Event deleted successfully", deletedEvent });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+//add user to the event
+app.put("/editevent/:eventId", async (req, res) => {
+  const { userId } = req.body;
+  const eventId = req.params.eventId;
+
+  try {
+    await client.connect();
+    const database = client.db("app-data");
+    const events = database.collection("events");
+
+    // Check if the user is already a participant
+    const event = await events.findOne({ _id: eventId });
+    if (event && event.participants.includes(userId)) {
+      console.log("User is already a participant of this event");
+      return res.status(400).send({ message: "User is already a participant of this event" });
+    }
+
+    const updatedEvent = await events.findOneAndUpdate(
+      { _id: eventId },
+      { $push: { participants: userId } },
+      { returnOriginal: false }
+    );
+
+    res.send(updatedEvent.value);
+  } catch (error) {
+    console.error('Error updating event:', error);
+    res.status(500).send({ message: "Failed to join event" });
+  }
+});
+
+
+//remove user from event
+app.put("/leaveevent/:eventId", async (req, res) => {
+  const { userId } = req.body;
+  const eventId = req.params.eventId;
+
+  try {
+    await client.connect();
+    const database = client.db("app-data");
+    const events = database.collection("events");
+
+    const updatedEvent = await events.findOneAndUpdate(
+      { _id: eventId },
+      { $pull: { participants: userId } },
+      { returnOriginal: false }
+    );
+
+    res.send(updatedEvent.value);
+  } catch (error) {
+    console.error('Error leaving event:', error);
+    res.status(500).send({ message: "Failed to leave event" });
+  }
+});
+
+
+
+
 
 
 
